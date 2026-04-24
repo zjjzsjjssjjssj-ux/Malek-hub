@@ -1,13 +1,48 @@
 -- Script: JOO Hub - Premium Edition
 -- Key: JOO
 -- Developer: Wazeer
+-- Rayfield UI Version
 
 -- إعدادات الواجهة
 local guiVisible = false
 local mainGui = nil
 local keyCorrect = false
 
--- دالة النسخ إلى الحافظة (متوافقة مع جميع المنفذات)
+-- المتغيرات الخاصة بـ Rayfield
+local Rayfield = nil
+local Window = nil
+local selectedPlayer = nil
+
+-- دالة تحميل Rayfield Library
+local function LoadRayfieldLibrary()
+    local success, lib = pcall(function()
+        return loadstring(game:HttpGet("https://raw.githubusercontent.com/shlexware/Rayfield/main/source.lua"))()
+    end)
+    
+    if success and lib then
+        Rayfield = lib
+        print("✅ Rayfield Library loaded successfully!")
+        return true
+    else
+        local success2, lib2 = pcall(function()
+            return loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
+        end)
+        if success2 and lib2 then
+            Rayfield = lib2
+            print("✅ Rayfield Library loaded from alternative source!")
+            return true
+        else
+            game:GetService("StarterGui"):SetCore("SendNotification", {
+                Title = "JOO Hub",
+                Text = "❌ فشل تحميل Rayfield! تأكد من اتصالك بالإنترنت",
+                Duration = 5
+            })
+            return false
+        end
+    end
+end
+
+-- دالة النسخ إلى الحافظة
 local function copyToClipboard(text)
     local success = false
     if setclipboard then
@@ -40,7 +75,6 @@ local function showLoadingBar()
     screenGui.ResetOnSpawn = false
     screenGui.Parent = game.CoreGui
     
-    -- الإطار الرئيسي للشريط
     local loadingFrame = Instance.new("Frame")
     loadingFrame.Size = UDim2.new(0, 300, 0, 40)
     loadingFrame.Position = UDim2.new(0.5, -150, 0.85, 0)
@@ -49,12 +83,10 @@ local function showLoadingBar()
     loadingFrame.BorderSizePixel = 0
     loadingFrame.Parent = screenGui
     
-    -- زوايا دائرية
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, 12)
     corner.Parent = loadingFrame
     
-    -- شريط التحميل
     local progressBar = Instance.new("Frame")
     progressBar.Size = UDim2.new(0, 0, 1, 0)
     progressBar.BackgroundColor3 = Color3.fromRGB(255, 80, 120)
@@ -66,17 +98,15 @@ local function showLoadingBar()
     progressCorner.CornerRadius = UDim.new(0, 12)
     progressCorner.Parent = progressBar
     
-    -- نص التحميل
     local loadingText = Instance.new("TextLabel")
     loadingText.Size = UDim2.new(1, 0, 1, 0)
     loadingText.BackgroundTransparency = 1
-    loadingText.Text = "🔐 JOO HUB | جاري التحميل..."
+    loadingText.Text = "🔥 JOO HUB | جاري التحميل..."
     loadingText.TextColor3 = Color3.fromRGB(255, 255, 255)
     loadingText.TextScaled = true
     loadingText.Font = Enum.Font.GothamBold
     loadingText.Parent = loadingFrame
     
-    -- تأثير حركة الشريط
     for i = 0, 1, 0.02 do
         progressBar.Size = UDim2.new(i, 0, 1, 0)
         task.wait(0.01)
@@ -88,7 +118,7 @@ end
 
 -- دالة إرسال رسالة إلى الشات
 local function sendChatMessage(message)
-    local success, err = pcall(function()
+    pcall(function()
         local replicatedStorage = game:GetService("ReplicatedStorage")
         local chatEvent = replicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
         if chatEvent then
@@ -98,15 +128,9 @@ local function sendChatMessage(message)
             end
         end
     end)
-    
-    if not success then
-        pcall(function()
-            game:GetService("ReplicatedStorage"):WaitForChild("SayMessageRequest"):FireServer(message, "All")
-        end)
-    end
 end
 
--- دالة إعادة spawn تلقائي
+-- نظام إعادة spawn تلقائي
 local function startRespawnMonitor()
     local player = game.Players.LocalPlayer
     
@@ -116,13 +140,6 @@ local function startRespawnMonitor()
             local respawnEvent = game:GetService("ReplicatedStorage"):FindFirstChild("Respawn")
             if respawnEvent then
                 respawnEvent:FireServer()
-            else
-                game:GetService("Players").LocalPlayer.Character.Humanoid.Health = 0
-                task.wait(1)
-                local respawnBindable = game:GetService("ReplicatedStorage"):FindFirstChild("RespawnBindable")
-                if respawnBindable then
-                    respawnBindable:FireServer()
-                end
             end
         end)
     end
@@ -136,86 +153,205 @@ local function startRespawnMonitor()
         end
     end)
     
-    if player.Character then
-        local humanoid = player.Character:FindFirstChild("Humanoid")
-        if humanoid then
-            humanoid.Died:Connect(function()
-                respawn()
-            end)
+    if player.Character and player.Character:FindFirstChild("Humanoid") then
+        player.Character.Humanoid.Died:Connect(function()
+            respawn()
+        end)
+    end
+end
+
+-- دالة تحديث قائمة اللاعبين
+local function RefreshPlayerList(Dropdown)
+    local players = {}
+    for i, player in ipairs(game.Players:GetPlayers()) do
+        if player ~= game.Players.LocalPlayer then
+            table.insert(players, player.Name)
         end
     end
-end
-
--- دالة تحميل القائمة الرئيسية (بدون الأزرار الأولى)
-local function loadMainMenu()
-    local success, result = pcall(function()
-        local OrionLib = loadstring(game:HttpGet('https://raw.githubusercontent.com/jensonhirst/Orion/main/source'))()
-        
-        local Window = OrionLib:MakeWindow({
-            Name = "🔥 JOO HUB | BROOKHAVEN 🔥", 
-            HidePremium = false, 
-            SaveConfig = true, 
-            ConfigFolder = "JOO_Hub_Config"
-        })
-        
-        -- تبويب الأكواد
-        local SkinsTab = Window:MakeTab({
-            Name = "🎨 أكواد الاسكنات",
-            Icon = "rbxassetid://4483345998",
-            PremiumOnly = false
-        })
-        
-        SkinsTab:AddButton({
-            Name = "🦓 كود اسكن زيبتو",
-            Callback = function()
-                copyToClipboard("Zipto Skin Code")
-            end    
-        })
-        
-        SkinsTab:AddButton({
-            Name = "⚫ كود اسكن أسود (VIP)",
-            Callback = function()
-                copyToClipboard("BH-AE-c045c154b479431382d2a71b59aa34f9")
-            end    
-        })
-        
-        -- تبويب الإعدادات
-        local SettingsTab = Window:MakeTab({
-            Name = "⚙️ الإعدادات",
-            Icon = "rbxassetid://4483345998",
-            PremiumOnly = false
-        })
-        
-        SettingsTab:AddButton({
-            Name = "❌ إغلاق القائمة",
-            Callback = function()
-                OrionLib:Destroy()
-            end
-        })
-        
-        print("✅ JOO Hub - تم التحميل بنجاح!")
-    end)
-    
-    if not success then
-        warn("Error loading menu: " .. tostring(result))
-        game:GetService("StarterGui"):SetCore("SendNotification", {
-            Title = "JOO Hub",
-            Text = "❌ خطأ في تحميل القائمة: " .. tostring(result),
-            Duration = 5
-        })
+    if Dropdown then
+        Dropdown:SetOptions(players)
     end
+    return players
 end
 
--- إنشاء نافذة إدخال المفتاح بشكل احترافي
+-- دالة تنفيذ بانج فيس (Face Bang)
+local function BangFace(targetPlayer)
+    if not targetPlayer or targetPlayer == "" then
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "JOO Hub - بانج",
+            Text = "❌ الرجاء اختيار لاعب أولاً!",
+            Duration = 2
+        })
+        return
+    end
+    
+    pcall(function()
+        -- محاولة تنفيذ البانج على الوجه
+        local remote = game:GetService("ReplicatedStorage"):FindFirstChild("BangFace")
+        if remote then
+            remote:FireServer(targetPlayer)
+        else
+            -- محاولة remote آخر
+            local altRemote = game:GetService("ReplicatedStorage"):FindFirstChild("FaceBang")
+            if altRemote then
+                altRemote:FireServer(targetPlayer)
+            end
+        end
+        
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "JOO Hub - بانج",
+            Text = "✅ تم تنفيذ بانج فيس على " .. targetPlayer,
+            Duration = 2
+        })
+    end)
+end
+
+-- دالة تنفيذ بانج ظهر (Back Bang)
+local function BangBack(targetPlayer)
+    if not targetPlayer or targetPlayer == "" then
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "JOO Hub - بانج",
+            Text = "❌ الرجاء اختيار لاعب أولاً!",
+            Duration = 2
+        })
+        return
+    end
+    
+    pcall(function()
+        -- محاولة تنفيذ البانج من الظهر
+        local remote = game:GetService("ReplicatedStorage"):FindFirstChild("BangBack")
+        if remote then
+            remote:FireServer(targetPlayer)
+        else
+            -- محاولة remote آخر
+            local altRemote = game:GetService("ReplicatedStorage"):FindFirstChild("BackBang")
+            if altRemote then
+                altRemote:FireServer(targetPlayer)
+            end
+        end
+        
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "JOO Hub - بانج",
+            Text = "✅ تم تنفيذ بانج ظهر على " .. targetPlayer,
+            Duration = 2
+        })
+    end)
+end
+
+-- دالة تحميل القائمة الرئيسية باستخدام Rayfield
+local function loadMainMenu()
+    if not LoadRayfieldLibrary() then
+        return
+    end
+    
+    -- إنشاء النافذة الرئيسية
+    Window = Rayfield:CreateWindow({
+        Name = "🔥 JOO HUB | BROOKHAVEN 🔥",
+        LoadingTitle = "JOO HUB",
+        LoadingSubtitle = "Premium Edition | By Wazeer",
+        ConfigurationSaving = {
+            Enabled = true,
+            FolderName = "JOO_Hub",
+            FileName = "Settings"
+        },
+        KeySystem = false,
+        ToggleKey = Enum.KeyCode.RightShift,
+    })
+    
+    -- تبويب الأكواد (Skins Tab)
+    local SkinsTab = Window:CreateTab("🎨 الأكواد", 4483362458)
+    local SkinsSection = SkinsTab:CreateSection("أكواد الاسكنات")
+    
+    SkinsSection:CreateButton({
+        Name = "🦓 كود اسكن زيبتو",
+        Callback = function()
+            copyToClipboard("Zipto Skin Code")
+        end
+    })
+    
+    SkinsSection:CreateButton({
+        Name = "⚫ كود اسكن أسود (VIP)",
+        Callback = function()
+            copyToClipboard("BH-AE-c045c154b479431382d2a71b59aa34f9")
+        end
+    })
+    
+    -- تبويب بانج الجديد 💥
+    local BangTab = Window:CreateTab("💥 بانج", 4483362458)
+    local BangSection = BangTab:CreateSection("🔥 نظام البانج")
+    
+    -- Dropdown لاختيار اللاعب
+    local PlayerDropdown = BangSection:CreateDropdown({
+        Name = "🎮 اختيار اللاعب",
+        Options = {},
+        CurrentOption = "",
+        Callback = function(Option)
+            selectedPlayer = Option
+            game:GetService("StarterGui"):SetCore("SendNotification", {
+                Title = "JOO Hub",
+                Text = "✅ تم اختيار: " .. Option,
+                Duration = 1.5
+            })
+        end
+    })
+    
+    -- زر تحديث قائمة اللاعبين
+    BangSection:CreateButton({
+        Name = "🔄 تحديث قائمة اللاعبين",
+        Callback = function()
+            local players = RefreshPlayerList(PlayerDropdown)
+            game:GetService("StarterGui"):SetCore("SendNotification", {
+                Title = "JOO Hub",
+                Text = "✅ تم تحديث القائمة | عدد اللاعبين: " .. #players,
+                Duration = 1.5
+            })
+        end
+    })
+    
+    -- خط فاصل (Label)
+    BangSection:CreateLabel("━━━━━━━━━━━━━━━━━━━━")
+    
+    -- زر بانج فيس
+    BangSection:CreateButton({
+        Name = "👊 بانج فيس (Face Bang)",
+        Callback = function()
+            BangFace(selectedPlayer)
+        end
+    })
+    
+    -- زر بانج ظهر
+    BangSection:CreateButton({
+        Name = "🔙 بانج ظهر (Back Bang)",
+        Callback = function()
+            BangBack(selectedPlayer)
+        end
+    })
+    
+    -- تبويب الإعدادات
+    local SettingsTab = Window:CreateTab("⚙️ الإعدادات", 4483362458)
+    local SettingsSection = SettingsTab:CreateSection("خيارات السكربت")
+    
+    SettingsSection:CreateButton({
+        Name = "❌ إغلاق القائمة",
+        Callback = function()
+            Rayfield:Destroy()
+        end
+    })
+    
+    -- تحديث قائمة اللاعبين أول مرة
+    task.wait(1)
+    RefreshPlayerList(PlayerDropdown)
+    
+    print("✅ JOO Hub - تم التحميل بنجاح باستخدام Rayfield!")
+end
+
+-- نافذة إدخال المفتاح
 local function createKeyWindow()
-    -- إظهار شريط التحميل أولاً
     showLoadingBar()
     
-    -- إرسال رسالة "منور" إلى الشات
     task.wait(0.5)
     sendChatMessage("منور")
     
-    -- إرسال رسالة المطور
     task.wait(0.5)
     sendChatMessage("السكربت من تطوير وزير 👑")
     
@@ -224,14 +360,12 @@ local function createKeyWindow()
     screenGui.ResetOnSpawn = false
     screenGui.Parent = game.CoreGui
     
-    -- خلفية مظللة خلف النافذة
     local overlay = Instance.new("Frame")
     overlay.Size = UDim2.new(1, 0, 1, 0)
     overlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
     overlay.BackgroundTransparency = 0.6
     overlay.Parent = screenGui
     
-    -- الإطار الرئيسي
     local keyFrame = Instance.new("Frame")
     keyFrame.Size = UDim2.new(0, 320, 0, 180)
     keyFrame.Position = UDim2.new(0.5, -160, 0.5, -90)
@@ -240,12 +374,10 @@ local function createKeyWindow()
     keyFrame.BorderSizePixel = 0
     keyFrame.Parent = screenGui
     
-    -- زوايا دائرية
     local shadow = Instance.new("UICorner")
     shadow.CornerRadius = UDim.new(0, 16)
     shadow.Parent = keyFrame
     
-    -- شريط العنوان
     local keyTitle = Instance.new("Frame")
     keyTitle.Size = UDim2.new(1, 0, 0, 50)
     keyTitle.Position = UDim2.new(0, 0, 0, 0)
@@ -257,7 +389,6 @@ local function createKeyWindow()
     titleCorner.CornerRadius = UDim.new(0, 16)
     titleCorner.Parent = keyTitle
     
-    -- نص العنوان
     local titleText = Instance.new("TextLabel")
     titleText.Size = UDim2.new(1, 0, 1, 0)
     titleText.BackgroundTransparency = 1
@@ -267,7 +398,6 @@ local function createKeyWindow()
     titleText.Font = Enum.Font.GothamBold
     titleText.Parent = keyTitle
     
-    -- حقل إدخال المفتاح
     local keyInput = Instance.new("TextBox")
     keyInput.Size = UDim2.new(0.8, 0, 0, 45)
     keyInput.Position = UDim2.new(0.1, 0, 0, 70)
@@ -284,7 +414,6 @@ local function createKeyWindow()
     inputCorner.CornerRadius = UDim.new(0, 12)
     inputCorner.Parent = keyInput
     
-    -- زر التأكيد
     local submitBtn = Instance.new("TextButton")
     submitBtn.Size = UDim2.new(0.8, 0, 0, 45)
     submitBtn.Position = UDim2.new(0.1, 0, 0, 125)
@@ -299,7 +428,6 @@ local function createKeyWindow()
     btnCorner.CornerRadius = UDim.new(0, 12)
     btnCorner.Parent = submitBtn
     
-    -- تأثير دخول متحرك
     keyFrame.BackgroundTransparency = 1
     keyFrame:TweenSizeAndPosition(UDim2.new(0, 350, 0, 200), UDim2.new(0.5, -175, 0.5, -100), "Out", "Quad", 0.3, true)
     task.wait(0.1)
@@ -310,7 +438,6 @@ local function createKeyWindow()
         task.wait(0.01)
     end
     
-    -- وظيفة فتح القائمة
     local function unlockAndLoad()
         submitBtn.Text = "✅ LOADING..."
         submitBtn.BackgroundColor3 = Color3.fromRGB(255, 165, 0)
@@ -323,13 +450,9 @@ local function createKeyWindow()
         end
         screenGui:Destroy()
         
-        -- بدء مراقبة الريسبون التلقائي
         startRespawnMonitor()
-        
-        -- تحميل القائمة الرئيسية
         loadMainMenu()
         
-        -- إشعار نجاح
         game:GetService("StarterGui"):SetCore("SendNotification", {
             Title = "JOO Hub",
             Text = "✅ تم فتح السكربت بنجاح! مرحباً بك يا مطور وزير",
@@ -337,7 +460,6 @@ local function createKeyWindow()
         })
     end
     
-    -- وظيفة زر التأكيد
     submitBtn.MouseButton1Click:Connect(function()
         if keyInput.Text == "JOO" then
             keyCorrect = true
@@ -354,7 +476,6 @@ local function createKeyWindow()
         end
     end)
     
-    -- الضغط على Enter من لوحة المفاتيح
     keyInput.FocusLost:Connect(function(enterPressed)
         if enterPressed and keyInput.Text == "JOO" then
             submitBtn.MouseButton1Click:Fire()
@@ -368,6 +489,6 @@ local function createKeyWindow()
 end
 
 -- تشغيل النظام
-print("✅ JOO Hub - نظام المفتاح جاهز! المفتاح: JOO")
+print("✅ JOO Hub - Rayfield Edition | المفتاح: JOO")
 print("✅ تم تطوير هذا السكربت بواسطة: وزير 👑")
 createKeyWindow()
