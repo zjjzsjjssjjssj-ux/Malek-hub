@@ -178,7 +178,7 @@ end
 local function BangFace(targetPlayer)
     if not targetPlayer or targetPlayer == "" then
         game:GetService("StarterGui"):SetCore("SendNotification", {
-            Title = "JOO Hub - بانج",
+            Title = "JOO Hub - قائمة البانج",
             Text = "❌ الرجاء اختيار لاعب أولاً!",
             Duration = 2
         })
@@ -186,23 +186,37 @@ local function BangFace(targetPlayer)
     end
     
     pcall(function()
-        -- محاولة تنفيذ البانج على الوجه
-        local remote = game:GetService("ReplicatedStorage"):FindFirstChild("BangFace")
-        if remote then
-            remote:FireServer(targetPlayer)
-        else
-            -- محاولة remote آخر
-            local altRemote = game:GetService("ReplicatedStorage"):FindFirstChild("FaceBang")
-            if altRemote then
-                altRemote:FireServer(targetPlayer)
+        -- محاولات متعددة للـ Remote
+        local remotes = {
+            game:GetService("ReplicatedStorage"):FindFirstChild("BangFace"),
+            game:GetService("ReplicatedStorage"):FindFirstChild("FaceBang"),
+            game:GetService("ReplicatedStorage"):FindFirstChild("Bang"),
+            game:GetService("ReplicatedStorage"):FindFirstChild("Shoot"),
+            game:GetService("ReplicatedStorage"):FindFirstChild("Damage")
+        }
+        
+        local executed = false
+        for _, remote in ipairs(remotes) do
+            if remote then
+                remote:FireServer(targetPlayer)
+                executed = true
+                break
             end
         end
         
-        game:GetService("StarterGui"):SetCore("SendNotification", {
-            Title = "JOO Hub - بانج",
-            Text = "✅ تم تنفيذ بانج فيس على " .. targetPlayer,
-            Duration = 2
-        })
+        if executed then
+            game:GetService("StarterGui"):SetCore("SendNotification", {
+                Title = "JOO Hub - قائمة البانج",
+                Text = "✅ تم تنفيذ بانج فيس على " .. targetPlayer,
+                Duration = 2
+            })
+        else
+            game:GetService("StarterGui"):SetCore("SendNotification", {
+                Title = "JOO Hub - قائمة البانج",
+                Text = "⚠️ لم يتم العثور على Remote للبانج",
+                Duration = 2
+            })
+        end
     end)
 end
 
@@ -210,7 +224,7 @@ end
 local function BangBack(targetPlayer)
     if not targetPlayer or targetPlayer == "" then
         game:GetService("StarterGui"):SetCore("SendNotification", {
-            Title = "JOO Hub - بانج",
+            Title = "JOO Hub - قائمة البانج",
             Text = "❌ الرجاء اختيار لاعب أولاً!",
             Duration = 2
         })
@@ -218,23 +232,36 @@ local function BangBack(targetPlayer)
     end
     
     pcall(function()
-        -- محاولة تنفيذ البانج من الظهر
-        local remote = game:GetService("ReplicatedStorage"):FindFirstChild("BangBack")
-        if remote then
-            remote:FireServer(targetPlayer)
-        else
-            -- محاولة remote آخر
-            local altRemote = game:GetService("ReplicatedStorage"):FindFirstChild("BackBang")
-            if altRemote then
-                altRemote:FireServer(targetPlayer)
+        -- محاولات متعددة للـ Remote
+        local remotes = {
+            game:GetService("ReplicatedStorage"):FindFirstChild("BangBack"),
+            game:GetService("ReplicatedStorage"):FindFirstChild("BackBang"),
+            game:GetService("ReplicatedStorage"):FindFirstChild("BangBehind"),
+            game:GetService("ReplicatedStorage"):FindFirstChild("BackShoot")
+        }
+        
+        local executed = false
+        for _, remote in ipairs(remotes) do
+            if remote then
+                remote:FireServer(targetPlayer)
+                executed = true
+                break
             end
         end
         
-        game:GetService("StarterGui"):SetCore("SendNotification", {
-            Title = "JOO Hub - بانج",
-            Text = "✅ تم تنفيذ بانج ظهر على " .. targetPlayer,
-            Duration = 2
-        })
+        if executed then
+            game:GetService("StarterGui"):SetCore("SendNotification", {
+                Title = "JOO Hub - قائمة البانج",
+                Text = "✅ تم تنفيذ بانج ظهر على " .. targetPlayer,
+                Duration = 2
+            })
+        else
+            game:GetService("StarterGui"):SetCore("SendNotification", {
+                Title = "JOO Hub - قائمة البانج",
+                Text = "⚠️ لم يتم العثور على Remote للبانج من الظهر",
+                Duration = 2
+            })
+        end
     end)
 end
 
@@ -276,9 +303,12 @@ local function loadMainMenu()
         end
     })
     
-    -- تبويب بانج الجديد 💥
-    local BangTab = Window:CreateTab("💥 بانج", 4483362458)
+    -- تبويب قائمة البانج 💥
+    local BangTab = Window:CreateTab("💥 قائمة البانج", 4483362458)
     local BangSection = BangTab:CreateSection("🔥 نظام البانج")
+    
+    -- نص توضيحي
+    BangSection:CreateLabel("📌 اختر اللاعب ثم اضغط على زر البانج المناسب")
     
     -- Dropdown لاختيار اللاعب
     local PlayerDropdown = BangSection:CreateDropdown({
@@ -288,7 +318,7 @@ local function loadMainMenu()
         Callback = function(Option)
             selectedPlayer = Option
             game:GetService("StarterGui"):SetCore("SendNotification", {
-                Title = "JOO Hub",
+                Title = "JOO Hub - قائمة البانج",
                 Text = "✅ تم اختيار: " .. Option,
                 Duration = 1.5
             })
@@ -301,14 +331,14 @@ local function loadMainMenu()
         Callback = function()
             local players = RefreshPlayerList(PlayerDropdown)
             game:GetService("StarterGui"):SetCore("SendNotification", {
-                Title = "JOO Hub",
+                Title = "JOO Hub - قائمة البانج",
                 Text = "✅ تم تحديث القائمة | عدد اللاعبين: " .. #players,
                 Duration = 1.5
             })
         end
     })
     
-    -- خط فاصل (Label)
+    -- خط فاصل
     BangSection:CreateLabel("━━━━━━━━━━━━━━━━━━━━")
     
     -- زر بانج فيس
@@ -326,6 +356,19 @@ local function loadMainMenu()
             BangBack(selectedPlayer)
         end
     })
+    
+    -- خط فاصل
+    BangSection:CreateLabel("━━━━━━━━━━━━━━━━━━━━")
+    
+    -- معلومات عن اللاعب المختار حالياً
+    BangSection:CreateLabel("ℹ️ اللاعب المختار حالياً: لا يوجد")
+    
+    -- تحديث الـ Label عند اختيار لاعب (عن طريق متغير)
+    local function UpdateSelectedLabel()
+        if selectedPlayer then
+            -- تحديث الـ Label صعب في Rayfield ولكن نقدر نضيف إشعار
+        end
+    end
     
     -- تبويب الإعدادات
     local SettingsTab = Window:CreateTab("⚙️ الإعدادات", 4483362458)
