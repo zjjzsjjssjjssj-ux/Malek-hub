@@ -1,537 +1,427 @@
--- Script: JOO Hub - Premium Edition
--- Key: JOO
--- Developer: Wazeer
--- Rayfield UI Version
+-- تحميل Rayfield
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
--- إعدادات الواجهة
-local guiVisible = false
-local mainGui = nil
-local keyCorrect = false
+-- ======================= واجهة المستخدم الرئيسية =======================
+local Window = Rayfield:CreateWindow({
+    Name = "Waxed Hub - بركاهيفن",
+    LoadingTitle = "جاري التحميل...",
+    LoadingSubtitle = "Waxed Hub",
+    ConfigurationSaving = { Enabled = true, FolderName = "WaxedHub", FileName = "Settings" },
+})
 
--- المتغيرات الخاصة بـ Rayfield
-local Rayfield = nil
-local Window = nil
-local selectedPlayer = nil
+-- ======================= متغيرات المضادات =======================
+local AntiDeathEnabled = false
+local AntiSitEnabled = false
+local AntiFlingEnabled = false
+local AntiPunchEnabled = false
 
--- دالة تحميل Rayfield Library
-local function LoadRayfieldLibrary()
-    local success, lib = pcall(function()
-        return loadstring(game:HttpGet("https://raw.githubusercontent.com/shlexware/Rayfield/main/source.lua"))()
-    end)
-    
-    if success and lib then
-        Rayfield = lib
-        print("✅ Rayfield Library loaded successfully!")
-        return true
-    else
-        local success2, lib2 = pcall(function()
-            return loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
-        end)
-        if success2 and lib2 then
-            Rayfield = lib2
-            print("✅ Rayfield Library loaded from alternative source!")
-            return true
-        else
-            game:GetService("StarterGui"):SetCore("SendNotification", {
-                Title = "JOO Hub",
-                Text = "❌ فشل تحميل Rayfield! تأكد من اتصالك بالإنترنت",
-                Duration = 5
-            })
-            return false
-        end
-    end
-end
+-- ======================= قائمة المضاد =======================
+local AntiTab = Window:CreateTab("🛡️ المضاد")
 
--- دالة النسخ إلى الحافظة
-local function copyToClipboard(text)
-    local success = false
-    if setclipboard then
-        success = pcall(function() setclipboard(text) end)
-    elseif toclipboard then
-        success = pcall(function() toclipboard(text) end)
-    elseif ClipboardAsync then
-        success = pcall(function() ClipboardAsync(text) end)
-    end
-    
-    if not success then
-        game:GetService("StarterGui"):SetCore("SendNotification", {
-            Title = "JOO Hub",
-            Text = "📋 تم نسخ: " .. text,
-            Duration = 2
-        })
-    else
-        game:GetService("StarterGui"):SetCore("SendNotification", {
-            Title = "JOO Hub",
-            Text = "✅ تم النسخ إلى الحافظة: " .. text,
-            Duration = 1.5
-        })
-    end
-end
+AntiTab:CreateSection("🔰 حماية اللاعب - Waxed Hub")
 
--- دالة إظهار شريط التحميل الصغير
-local function showLoadingBar()
-    local screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "JOO_LoadingBar"
-    screenGui.ResetOnSpawn = false
-    screenGui.Parent = game.CoreGui
-    
-    local loadingFrame = Instance.new("Frame")
-    loadingFrame.Size = UDim2.new(0, 300, 0, 40)
-    loadingFrame.Position = UDim2.new(0.5, -150, 0.85, 0)
-    loadingFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
-    loadingFrame.BackgroundTransparency = 0.2
-    loadingFrame.BorderSizePixel = 0
-    loadingFrame.Parent = screenGui
-    
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 12)
-    corner.Parent = loadingFrame
-    
-    local progressBar = Instance.new("Frame")
-    progressBar.Size = UDim2.new(0, 0, 1, 0)
-    progressBar.BackgroundColor3 = Color3.fromRGB(255, 80, 120)
-    progressBar.BackgroundTransparency = 0.1
-    progressBar.BorderSizePixel = 0
-    progressBar.Parent = loadingFrame
-    
-    local progressCorner = Instance.new("UICorner")
-    progressCorner.CornerRadius = UDim.new(0, 12)
-    progressCorner.Parent = progressBar
-    
-    local loadingText = Instance.new("TextLabel")
-    loadingText.Size = UDim2.new(1, 0, 1, 0)
-    loadingText.BackgroundTransparency = 1
-    loadingText.Text = "🔥 JOO HUB | جاري التحميل..."
-    loadingText.TextColor3 = Color3.fromRGB(255, 255, 255)
-    loadingText.TextScaled = true
-    loadingText.Font = Enum.Font.GothamBold
-    loadingText.Parent = loadingFrame
-    
-    for i = 0, 1, 0.02 do
-        progressBar.Size = UDim2.new(i, 0, 1, 0)
-        task.wait(0.01)
-    end
-    
-    task.wait(0.3)
-    screenGui:Destroy()
-end
+AntiTab:CreateToggle({
+    Name = "💀 مضاد الموت 💀",
+    CurrentValue = false,
+    Flag = "AntiDeath",
+    Callback = function(Value) AntiDeathEnabled = Value end,
+})
 
--- دالة إرسال رسالة إلى الشات
-local function sendChatMessage(message)
-    pcall(function()
-        local replicatedStorage = game:GetService("ReplicatedStorage")
-        local chatEvent = replicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
-        if chatEvent then
-            local sayMessage = chatEvent:FindFirstChild("SayMessageRequest")
-            if sayMessage then
-                sayMessage:FireServer(message, "All")
-            end
-        end
-    end)
-end
+AntiTab:CreateToggle({
+    Name = "🪑 مضاد الجلوس 🪑",
+    CurrentValue = false,
+    Flag = "AntiSit",
+    Callback = function(Value) AntiSitEnabled = Value end,
+})
 
--- نظام إعادة spawn تلقائي
-local function startRespawnMonitor()
-    local player = game.Players.LocalPlayer
-    
-    local function respawn()
-        task.wait(1.5)
-        pcall(function()
-            local respawnEvent = game:GetService("ReplicatedStorage"):FindFirstChild("Respawn")
-            if respawnEvent then
-                respawnEvent:FireServer()
-            end
-        end)
-    end
-    
-    player.CharacterAdded:Connect(function(character)
-        local humanoid = character:WaitForChild("Humanoid", 5)
-        if humanoid then
-            humanoid.Died:Connect(function()
-                respawn()
-            end)
-        end
-    end)
-    
-    if player.Character and player.Character:FindFirstChild("Humanoid") then
-        player.Character.Humanoid.Died:Connect(function()
-            respawn()
-        end)
-    end
-end
+AntiTab:CreateToggle({
+    Name = "🌀 مضاد الفلنق 🌀",
+    CurrentValue = false,
+    Flag = "AntiFling",
+    Callback = function(Value) AntiFlingEnabled = Value end,
+})
 
--- دالة تحديث قائمة اللاعبين
-local function RefreshPlayerList(Dropdown)
-    local players = {}
-    for i, player in ipairs(game.Players:GetPlayers()) do
-        if player ~= game.Players.LocalPlayer then
-            table.insert(players, player.Name)
-        end
-    end
-    if Dropdown then
-        Dropdown:SetOptions(players)
-    end
-    return players
-end
+AntiTab:CreateToggle({
+    Name = "👊 مضاد البانج 👊",
+    CurrentValue = false,
+    Flag = "AntiPunch",
+    Callback = function(Value) AntiPunchEnabled = Value end,
+})
 
--- دالة تنفيذ بانج فيس (Face Bang)
-local function BangFace(targetPlayer)
-    if not targetPlayer or targetPlayer == "" then
-        game:GetService("StarterGui"):SetCore("SendNotification", {
-            Title = "JOO Hub - قائمة البانج",
-            Text = "❌ الرجاء اختيار لاعب أولاً!",
-            Duration = 2
-        })
-        return
-    end
-    
-    pcall(function()
-        -- محاولات متعددة للـ Remote
-        local remotes = {
-            game:GetService("ReplicatedStorage"):FindFirstChild("BangFace"),
-            game:GetService("ReplicatedStorage"):FindFirstChild("FaceBang"),
-            game:GetService("ReplicatedStorage"):FindFirstChild("Bang"),
-            game:GetService("ReplicatedStorage"):FindFirstChild("Shoot"),
-            game:GetService("ReplicatedStorage"):FindFirstChild("Damage")
-        }
-        
-        local executed = false
-        for _, remote in ipairs(remotes) do
-            if remote then
-                remote:FireServer(targetPlayer)
-                executed = true
-                break
-            end
-        end
-        
-        if executed then
-            game:GetService("StarterGui"):SetCore("SendNotification", {
-                Title = "JOO Hub - قائمة البانج",
-                Text = "✅ تم تنفيذ بانج فيس على " .. targetPlayer,
-                Duration = 2
-            })
-        else
-            game:GetService("StarterGui"):SetCore("SendNotification", {
-                Title = "JOO Hub - قائمة البانج",
-                Text = "⚠️ لم يتم العثور على Remote للبانج",
-                Duration = 2
-            })
-        end
-    end)
-end
+-- ======================= قائمة نسخ اسكنات =======================
+local SkinsTab = Window:CreateTab("🎨 نسخ اسكنات")
 
--- دالة تنفيذ بانج ظهر (Back Bang)
-local function BangBack(targetPlayer)
-    if not targetPlayer or targetPlayer == "" then
-        game:GetService("StarterGui"):SetCore("SendNotification", {
-            Title = "JOO Hub - قائمة البانج",
-            Text = "❌ الرجاء اختيار لاعب أولاً!",
-            Duration = 2
-        })
-        return
-    end
-    
-    pcall(function()
-        -- محاولات متعددة للـ Remote
-        local remotes = {
-            game:GetService("ReplicatedStorage"):FindFirstChild("BangBack"),
-            game:GetService("ReplicatedStorage"):FindFirstChild("BackBang"),
-            game:GetService("ReplicatedStorage"):FindFirstChild("BangBehind"),
-            game:GetService("ReplicatedStorage"):FindFirstChild("BackShoot")
-        }
-        
-        local executed = false
-        for _, remote in ipairs(remotes) do
-            if remote then
-                remote:FireServer(targetPlayer)
-                executed = true
-                break
-            end
-        end
-        
-        if executed then
-            game:GetService("StarterGui"):SetCore("SendNotification", {
-                Title = "JOO Hub - قائمة البانج",
-                Text = "✅ تم تنفيذ بانج ظهر على " .. targetPlayer,
-                Duration = 2
-            })
-        else
-            game:GetService("StarterGui"):SetCore("SendNotification", {
-                Title = "JOO Hub - قائمة البانج",
-                Text = "⚠️ لم يتم العثور على Remote للبانج من الظهر",
-                Duration = 2
-            })
-        end
-    end)
-end
+SkinsTab:CreateSection("🎨 اسكنات المطور - Waxed Hub")
 
--- دالة تحميل القائمة الرئيسية باستخدام Rayfield
-local function loadMainMenu()
-    if not LoadRayfieldLibrary() then
-        return
-    end
-    
-    -- إنشاء النافذة الرئيسية
-    Window = Rayfield:CreateWindow({
-        Name = "🔥 JOO HUB | BROOKHAVEN 🔥",
-        LoadingTitle = "JOO HUB",
-        LoadingSubtitle = "Premium Edition | By Wazeer",
-        ConfigurationSaving = {
-            Enabled = true,
-            FolderName = "JOO_Hub",
-            FileName = "Settings"
-        },
-        KeySystem = false,
-        ToggleKey = Enum.KeyCode.RightShift,
-    })
-    
-    -- تبويب الأكواد (Skins Tab)
-    local SkinsTab = Window:CreateTab("🎨 الأكواد", 4483362458)
-    local SkinsSection = SkinsTab:CreateSection("أكواد الاسكنات")
-    
-    SkinsSection:CreateButton({
-        Name = "🦓 كود اسكن زيبتو",
-        Callback = function()
-            copyToClipboard("Zipto Skin Code")
-        end
-    })
-    
-    SkinsSection:CreateButton({
-        Name = "⚫ كود اسكن أسود (VIP)",
-        Callback = function()
-            copyToClipboard("BH-AE-c045c154b479431382d2a71b59aa34f9")
-        end
-    })
-    
-    -- تبويب قائمة البانج 💥
-    local BangTab = Window:CreateTab("💥 قائمة البانج", 4483362458)
-    local BangSection = BangTab:CreateSection("🔥 نظام البانج")
-    
-    -- نص توضيحي
-    BangSection:CreateLabel("📌 اختر اللاعب ثم اضغط على زر البانج المناسب")
-    
-    -- Dropdown لاختيار اللاعب
-    local PlayerDropdown = BangSection:CreateDropdown({
-        Name = "🎮 اختيار اللاعب",
-        Options = {},
-        CurrentOption = "",
-        Callback = function(Option)
-            selectedPlayer = Option
-            game:GetService("StarterGui"):SetCore("SendNotification", {
-                Title = "JOO Hub - قائمة البانج",
-                Text = "✅ تم اختيار: " .. Option,
-                Duration = 1.5
-            })
-        end
-    })
-    
-    -- زر تحديث قائمة اللاعبين
-    BangSection:CreateButton({
-        Name = "🔄 تحديث قائمة اللاعبين",
-        Callback = function()
-            local players = RefreshPlayerList(PlayerDropdown)
-            game:GetService("StarterGui"):SetCore("SendNotification", {
-                Title = "JOO Hub - قائمة البانج",
-                Text = "✅ تم تحديث القائمة | عدد اللاعبين: " .. #players,
-                Duration = 1.5
-            })
-        end
-    })
-    
-    -- خط فاصل
-    BangSection:CreateLabel("━━━━━━━━━━━━━━━━━━━━")
-    
-    -- زر بانج فيس
-    BangSection:CreateButton({
-        Name = "👊 بانج فيس (Face Bang)",
-        Callback = function()
-            BangFace(selectedPlayer)
-        end
-    })
-    
-    -- زر بانج ظهر
-    BangSection:CreateButton({
-        Name = "🔙 بانج ظهر (Back Bang)",
-        Callback = function()
-            BangBack(selectedPlayer)
-        end
-    })
-    
-    -- خط فاصل
-    BangSection:CreateLabel("━━━━━━━━━━━━━━━━━━━━")
-    
-    -- معلومات عن اللاعب المختار حالياً
-    BangSection:CreateLabel("ℹ️ اللاعب المختار حالياً: لا يوجد")
-    
-    -- تحديث الـ Label عند اختيار لاعب (عن طريق متغير)
-    local function UpdateSelectedLabel()
-        if selectedPlayer then
-            -- تحديث الـ Label صعب في Rayfield ولكن نقدر نضيف إشعار
-        end
-    end
-    
-    -- تبويب الإعدادات
-    local SettingsTab = Window:CreateTab("⚙️ الإعدادات", 4483362458)
-    local SettingsSection = SettingsTab:CreateSection("خيارات السكربت")
-    
-    SettingsSection:CreateButton({
-        Name = "❌ إغلاق القائمة",
-        Callback = function()
-            Rayfield:Destroy()
-        end
-    })
-    
-    -- تحديث قائمة اللاعبين أول مرة
-    task.wait(1)
-    RefreshPlayerList(PlayerDropdown)
-    
-    print("✅ JOO Hub - تم التحميل بنجاح باستخدام Rayfield!")
-end
-
--- نافذة إدخال المفتاح
-local function createKeyWindow()
-    showLoadingBar()
-    
-    task.wait(0.5)
-    sendChatMessage("منور")
-    
-    task.wait(0.5)
-    sendChatMessage("السكربت من تطوير وزير 👑")
-    
-    local screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "JOO_KeySystem"
-    screenGui.ResetOnSpawn = false
-    screenGui.Parent = game.CoreGui
-    
-    local overlay = Instance.new("Frame")
-    overlay.Size = UDim2.new(1, 0, 1, 0)
-    overlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    overlay.BackgroundTransparency = 0.6
-    overlay.Parent = screenGui
-    
-    local keyFrame = Instance.new("Frame")
-    keyFrame.Size = UDim2.new(0, 320, 0, 180)
-    keyFrame.Position = UDim2.new(0.5, -160, 0.5, -90)
-    keyFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
-    keyFrame.BackgroundTransparency = 0.1
-    keyFrame.BorderSizePixel = 0
-    keyFrame.Parent = screenGui
-    
-    local shadow = Instance.new("UICorner")
-    shadow.CornerRadius = UDim.new(0, 16)
-    shadow.Parent = keyFrame
-    
-    local keyTitle = Instance.new("Frame")
-    keyTitle.Size = UDim2.new(1, 0, 0, 50)
-    keyTitle.Position = UDim2.new(0, 0, 0, 0)
-    keyTitle.BackgroundColor3 = Color3.fromRGB(255, 80, 120)
-    keyTitle.BackgroundTransparency = 0.2
-    keyTitle.Parent = keyFrame
-    
-    local titleCorner = Instance.new("UICorner")
-    titleCorner.CornerRadius = UDim.new(0, 16)
-    titleCorner.Parent = keyTitle
-    
-    local titleText = Instance.new("TextLabel")
-    titleText.Size = UDim2.new(1, 0, 1, 0)
-    titleText.BackgroundTransparency = 1
-    titleText.Text = "🔐 JOO HUB | ACCESS KEY"
-    titleText.TextColor3 = Color3.fromRGB(255, 255, 255)
-    titleText.TextScaled = true
-    titleText.Font = Enum.Font.GothamBold
-    titleText.Parent = keyTitle
-    
-    local keyInput = Instance.new("TextBox")
-    keyInput.Size = UDim2.new(0.8, 0, 0, 45)
-    keyInput.Position = UDim2.new(0.1, 0, 0, 70)
-    keyInput.BackgroundColor3 = Color3.fromRGB(30, 30, 45)
-    keyInput.Text = ""
-    keyInput.PlaceholderText = "ENTER KEY HERE..."
-    keyInput.PlaceholderColor3 = Color3.fromRGB(150, 150, 170)
-    keyInput.TextColor3 = Color3.fromRGB(255, 255, 255)
-    keyInput.TextScaled = true
-    keyInput.Font = Enum.Font.GothamBold
-    keyInput.Parent = keyFrame
-    
-    local inputCorner = Instance.new("UICorner")
-    inputCorner.CornerRadius = UDim.new(0, 12)
-    inputCorner.Parent = keyInput
-    
-    local submitBtn = Instance.new("TextButton")
-    submitBtn.Size = UDim2.new(0.8, 0, 0, 45)
-    submitBtn.Position = UDim2.new(0.1, 0, 0, 125)
-    submitBtn.BackgroundColor3 = Color3.fromRGB(80, 200, 80)
-    submitBtn.Text = "✅ UNLOCK MENU"
-    submitBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    submitBtn.TextScaled = true
-    submitBtn.Font = Enum.Font.GothamBold
-    submitBtn.Parent = keyFrame
-    
-    local btnCorner = Instance.new("UICorner")
-    btnCorner.CornerRadius = UDim.new(0, 12)
-    btnCorner.Parent = submitBtn
-    
-    keyFrame.BackgroundTransparency = 1
-    keyFrame:TweenSizeAndPosition(UDim2.new(0, 350, 0, 200), UDim2.new(0.5, -175, 0.5, -100), "Out", "Quad", 0.3, true)
-    task.wait(0.1)
-    for i = 0, 1, 0.05 do
-        keyFrame.BackgroundTransparency = 1 - i
-        keyTitle.BackgroundTransparency = 0.2 * (1 - i)
-        overlay.BackgroundTransparency = 0.6 * (1 - i)
-        task.wait(0.01)
-    end
-    
-    local function unlockAndLoad()
-        submitBtn.Text = "✅ LOADING..."
-        submitBtn.BackgroundColor3 = Color3.fromRGB(255, 165, 0)
-        task.wait(0.3)
-        
-        for i = 0, 1, 0.1 do
-            keyFrame.BackgroundTransparency = i
-            overlay.BackgroundTransparency = 0.6 + i
-            task.wait(0.02)
-        end
-        screenGui:Destroy()
-        
-        startRespawnMonitor()
-        loadMainMenu()
-        
-        game:GetService("StarterGui"):SetCore("SendNotification", {
-            Title = "JOO Hub",
-            Text = "✅ تم فتح السكربت بنجاح! مرحباً بك يا مطور وزير",
+-- زر نسخ الاسكن الاسود المطرشم
+SkinsTab:CreateButton({
+    Name = "⚫ اسكن اسود مطرشم ⚫",
+    Callback = function()
+        local code = "BH-AE-c9023ea39f774eb786f785deb2adc5a7"
+        setclipboard(code)
+        Rayfield:Notify({
+            Title = "✅ تم النسخ",
+            Content = "تم نسخ الكود: " .. code,
             Duration = 3
         })
-    end
-    
-    submitBtn.MouseButton1Click:Connect(function()
-        if keyInput.Text == "JOO" then
-            keyCorrect = true
-            unlockAndLoad()
+    end,
+})
+
+-- ======================= قائمة البانج =======================
+local PunchTab = Window:CreateTab("🔴 تفعيل البانج")
+
+local PunchEnabled = false
+local SelectedPunchPlayer = nil
+
+PunchTab:CreateToggle({
+    Name = "⚡ تشغيل القائمة ⚡",
+    CurrentValue = false,
+    Flag = "PunchToggle",
+    Callback = function(Value) PunchEnabled = Value end,
+})
+
+PunchTab:CreateSection("🎮 اختيار اللاعب")
+
+local PunchDropdown = PunchTab:CreateDropdown({
+    Name = "قائمة اللاعبين",
+    Options = {},
+    CurrentOption = "-- اختر لاعباً --",
+    Flag = "PunchSelect",
+    Callback = function(Option)
+        if Option == "-- اختر لاعباً --" then return end
+        for _, plr in pairs(game.Players:GetPlayers()) do
+            if plr.Name == Option then
+                SelectedPunchPlayer = plr
+                Rayfield:Notify({ Title = "✅", Content = "تم اختيار: " .. plr.Name, Duration = 1 })
+                break
+            end
+        end
+    end,
+})
+
+PunchTab:CreateSection("💥 أزرار البانج")
+
+PunchTab:CreateButton({
+    Name = "👊 بانج فيس 👊",
+    Callback = function()
+        if PunchEnabled and SelectedPunchPlayer then
+            game:GetService("ReplicatedStorage"):WaitForChild("RemotePunchFace"):FireServer(SelectedPunchPlayer)
+            Rayfield:Notify({ Title = "👊", Content = "بانج فيس على " .. SelectedPunchPlayer.Name, Duration = 1 })
         else
-            submitBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-            submitBtn.Text = "❌ WRONG KEY!"
-            keyInput.Text = ""
-            keyInput.PlaceholderText = "TRY AGAIN..."
-            task.wait(0.8)
-            submitBtn.BackgroundColor3 = Color3.fromRGB(80, 200, 80)
-            submitBtn.Text = "✅ UNLOCK MENU"
-            keyInput.PlaceholderText = "ENTER KEY HERE..."
+            Rayfield:Notify({ Title = "❌", Content = "فعّل القائمة واختر لاعباً!", Duration = 1.5 })
         end
-    end)
-    
-    keyInput.FocusLost:Connect(function(enterPressed)
-        if enterPressed and keyInput.Text == "JOO" then
-            submitBtn.MouseButton1Click:Fire()
-        elseif enterPressed and keyInput.Text ~= "" then
-            keyInput.Text = ""
-            keyInput.PlaceholderText = "WRONG KEY! TRY AGAIN..."
-            task.wait(0.8)
-            keyInput.PlaceholderText = "ENTER KEY HERE..."
+    end,
+})
+
+PunchTab:CreateButton({
+    Name = "🤛 بانج ظهر 🤜",
+    Callback = function()
+        if PunchEnabled and SelectedPunchPlayer then
+            game:GetService("ReplicatedStorage"):WaitForChild("RemotePunchBack"):FireServer(SelectedPunchPlayer)
+            Rayfield:Notify({ Title = "🤛", Content = "بانج ظهر على " .. SelectedPunchPlayer.Name, Duration = 1 })
+        else
+            Rayfield:Notify({ Title = "❌", Content = "فعّل القائمة واختر لاعباً!", Duration = 1.5 })
         end
-    end)
+    end,
+})
+
+-- ======================= قائمة الفلنق =======================
+local FlingTab = Window:CreateTab("🌀 فلنق")
+
+local FlingEnabled = false
+local SelectedFlingPlayer = nil
+
+FlingTab:CreateToggle({
+    Name = "⚡ تشغيل القائمة ⚡",
+    CurrentValue = false,
+    Flag = "FlingToggle",
+    Callback = function(Value) FlingEnabled = Value end,
+})
+
+FlingTab:CreateSection("🎮 اختيار اللاعب")
+
+local FlingDropdown = FlingTab:CreateDropdown({
+    Name = "قائمة اللاعبين",
+    Options = {},
+    CurrentOption = "-- اختر لاعباً --",
+    Flag = "FlingSelect",
+    Callback = function(Option)
+        if Option == "-- اختر لاعباً --" then return end
+        for _, plr in pairs(game.Players:GetPlayers()) do
+            if plr.Name == Option then
+                SelectedFlingPlayer = plr
+                Rayfield:Notify({ Title = "✅", Content = "تم اختيار: " .. plr.Name, Duration = 1 })
+                break
+            end
+        end
+    end,
+})
+
+FlingTab:CreateSection("🌀 زر الفلنق")
+
+FlingTab:CreateButton({
+    Name = "🌀 تفعيل الفلنق 🌀",
+    Callback = function()
+        if FlingEnabled and SelectedFlingPlayer then
+            game:GetService("ReplicatedStorage"):WaitForChild("RemoteFling"):FireServer(SelectedFlingPlayer)
+            Rayfield:Notify({ Title = "🌀", Content = "تم فلنق " .. SelectedFlingPlayer.Name, Duration = 1.5 })
+        else
+            Rayfield:Notify({ Title = "❌", Content = "فعّل القائمة واختر لاعباً!", Duration = 1.5 })
+        end
+    end,
+})
+
+-- ======================= قائمة تلوين الاسم =======================
+local ColorTab = Window:CreateTab("🎨 تلوين الاسم")
+
+local ColoringEnabled = false
+local CurrentHue = 0
+local ColorLoop = nil
+
+ColorTab:CreateToggle({
+    Name = "🌈 تشغيل تلوين الاسم والبايو 🌈",
+    CurrentValue = false,
+    Flag = "ColorToggle",
+    Callback = function(Value)
+        ColoringEnabled = Value
+        if Value then
+            ColorLoop = task.spawn(function()
+                while ColoringEnabled do
+                    local color = Color3.fromHSV(CurrentHue, 1, 1)
+                    local player = game.Players.LocalPlayer
+                    if player and player.Character and player.Character:FindFirstChild("Head") then
+                        local head = player.Character.Head
+                        if head:FindFirstChild("NameDisplay") then
+                            local nd = head.NameDisplay
+                            if nd:FindFirstChild("Name") then nd.Name.TextColor3 = color end
+                            if nd:FindFirstChild("DisplayName") then nd.DisplayName.TextColor3 = color end
+                            if nd:FindFirstChild("Bio") then nd.Bio.TextColor3 = color end
+                        end
+                    end
+                    CurrentHue = CurrentHue + 0.02
+                    if CurrentHue > 1 then CurrentHue = 0 end
+                    task.wait(0.1)
+                end
+            end)
+            Rayfield:Notify({ Title = "🎨", Content = "تم تشغيل التلوين", Duration = 1.5 })
+        else
+            if ColorLoop then task.cancel(ColorLoop) end
+            -- إعادة اللون إلى الأبيض
+            local player = game.Players.LocalPlayer
+            if player and player.Character and player.Character:FindFirstChild("Head") then
+                local head = player.Character.Head
+                if head:FindFirstChild("NameDisplay") then
+                    local nd = head.NameDisplay
+                    local white = Color3.fromRGB(255, 255, 255)
+                    if nd:FindFirstChild("Name") then nd.Name.TextColor3 = white end
+                    if nd:FindFirstChild("DisplayName") then nd.DisplayName.TextColor3 = white end
+                    if nd:FindFirstChild("Bio") then nd.Bio.TextColor3 = white end
+                end
+            end
+            Rayfield:Notify({ Title = "🎨", Content = "تم إيقاف التلوين", Duration = 1.5 })
+        end
+    end,
+})
+
+ColorTab:CreateSection("🎨 اختر لوناً ثابتاً")
+
+ColorTab:CreateButton({
+    Name = "⚫ أسود",
+    Callback = function()
+        if ColoringEnabled then
+            if ColorLoop then task.cancel(ColorLoop) end
+            local color = Color3.fromRGB(0, 0, 0)
+            local player = game.Players.LocalPlayer
+            if player and player.Character and player.Character:FindFirstChild("Head") then
+                local head = player.Character.Head
+                if head:FindFirstChild("NameDisplay") then
+                    local nd = head.NameDisplay
+                    if nd:FindFirstChild("Name") then nd.Name.TextColor3 = color end
+                    if nd:FindFirstChild("DisplayName") then nd.DisplayName.TextColor3 = color end
+                    if nd:FindFirstChild("Bio") then nd.Bio.TextColor3 = color end
+                end
+            end
+            Rayfield:Notify({ Title = "🎨", Content = "تم تغيير اللون إلى الأسود", Duration = 1 })
+        end
+    end,
+})
+
+ColorTab:CreateButton({
+    Name = "🔴 أحمر",
+    Callback = function()
+        if ColoringEnabled then
+            if ColorLoop then task.cancel(ColorLoop) end
+            local color = Color3.fromRGB(255, 0, 0)
+            local player = game.Players.LocalPlayer
+            if player and player.Character and player.Character:FindFirstChild("Head") then
+                local head = player.Character.Head
+                if head:FindFirstChild("NameDisplay") then
+                    local nd = head.NameDisplay
+                    if nd:FindFirstChild("Name") then nd.Name.TextColor3 = color end
+                    if nd:FindFirstChild("DisplayName") then nd.DisplayName.TextColor3 = color end
+                    if nd:FindFirstChild("Bio") then nd.Bio.TextColor3 = color end
+                end
+            end
+            Rayfield:Notify({ Title = "🎨", Content = "تم تغيير اللون إلى الأحمر", Duration = 1 })
+        end
+    end,
+})
+
+ColorTab:CreateButton({
+    Name = "⬜ أبيض",
+    Callback = function()
+        if ColoringEnabled then
+            if ColorLoop then task.cancel(ColorLoop) end
+            local color = Color3.fromRGB(255, 255, 255)
+            local player = game.Players.LocalPlayer
+            if player and player.Character and player.Character:FindFirstChild("Head") then
+                local head = player.Character.Head
+                if head:FindFirstChild("NameDisplay") then
+                    local nd = head.NameDisplay
+                    if nd:FindFirstChild("Name") then nd.Name.TextColor3 = color end
+                    if nd:FindFirstChild("DisplayName") then nd.DisplayName.TextColor3 = color end
+                    if nd:FindFirstChild("Bio") then nd.Bio.TextColor3 = color end
+                end
+            end
+            Rayfield:Notify({ Title = "🎨", Content = "تم تغيير اللون إلى الأبيض", Duration = 1 })
+        end
+    end,
+})
+
+ColorTab:CreateButton({
+    Name = "🌈 رينبو (متحرك)",
+    Callback = function()
+        if ColoringEnabled then
+            if ColorLoop then task.cancel(ColorLoop) end
+            CurrentHue = 0
+            ColorLoop = task.spawn(function()
+                while ColoringEnabled do
+                    local color = Color3.fromHSV(CurrentHue, 1, 1)
+                    local player = game.Players.LocalPlayer
+                    if player and player.Character and player.Character:FindFirstChild("Head") then
+                        local head = player.Character.Head
+                        if head:FindFirstChild("NameDisplay") then
+                            local nd = head.NameDisplay
+                            if nd:FindFirstChild("Name") then nd.Name.TextColor3 = color end
+                            if nd:FindFirstChild("DisplayName") then nd.DisplayName.TextColor3 = color end
+                            if nd:FindFirstChild("Bio") then nd.Bio.TextColor3 = color end
+                        end
+                    end
+                    CurrentHue = CurrentHue + 0.02
+                    if CurrentHue > 1 then CurrentHue = 0 end
+                    task.wait(0.1)
+                end
+            end)
+            Rayfield:Notify({ Title = "🎨", Content = "تم تشغيل وضع الرينبو", Duration = 1 })
+        end
+    end,
+})
+
+-- ======================= وظائف المضادات =======================
+-- مضاد الموت
+task.spawn(function()
+    while true do
+        if AntiDeathEnabled then
+            local player = game.Players.LocalPlayer
+            local char = player.Character
+            if char and char:FindFirstChild("Humanoid") then
+                local humanoid = char.Humanoid
+                if humanoid.Health < 100 then
+                    humanoid.Health = 100
+                end
+                humanoid.BreakJointsOnDeath = false
+            end
+        end
+        task.wait(0.1)
+    end
+end)
+
+-- مضاد الجلوس
+task.spawn(function()
+    while true do
+        if AntiSitEnabled then
+            local player = game.Players.LocalPlayer
+            local char = player.Character
+            if char and char:FindFirstChild("Humanoid") then
+                if char.Humanoid.Sit then
+                    char.Humanoid.Sit = false
+                end
+            end
+        end
+        task.wait(0.05)
+    end
+end)
+
+-- مضاد الفلنق
+task.spawn(function()
+    while true do
+        if AntiFlingEnabled then
+            local player = game.Players.LocalPlayer
+            local char = player.Character
+            if char then
+                local hrp = char:FindFirstChild("HumanoidRootPart")
+                if hrp then
+                    for _, v in pairs(hrp:GetChildren()) do
+                        if v:IsA("BodyVelocity") or v:IsA("BodyAngularVelocity") then
+                            v:Destroy()
+                        end
+                    end
+                    if hrp.AssemblyLinearVelocity.Magnitude > 50 then
+                        hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+                    end
+                end
+            end
+        end
+        task.wait(0.1)
+    end
+end)
+
+-- مضاد البانج
+task.spawn(function()
+    while true do
+        if AntiPunchEnabled then
+            local player = game.Players.LocalPlayer
+            local char = player.Character
+            if char then
+                local hrp = char:FindFirstChild("HumanoidRootPart")
+                if hrp then
+                    for _, v in pairs(hrp:GetChildren()) do
+                        if v:IsA("BodyVelocity") and v.Velocity.Magnitude < 100 then
+                            v:Destroy()
+                        end
+                    end
+                end
+            end
+        end
+        task.wait(0.1)
+    end
+end)
+
+-- مراقبة تغير الشخصية
+game.Players.LocalPlayer.CharacterAdded:Connect(function(char)
+    task.wait(0.5)
+    if AntiDeathEnabled then
+        local humanoid = char:FindFirstChild("Humanoid")
+        if humanoid then
+            humanoid.BreakJointsOnDeath = false
+            humanoid.Health = 100
+        end
+    end
+end)
+
+-- تحديث قوائم اللاعبين
+local function UpdateDropdowns()
+    local players = {}
+    for _, plr in pairs(game.Players:GetPlayers()) do
+        if plr ~= game.Players.LocalPlayer then
+            table.insert(players, plr.Name)
+        end
+    end
+    if #players == 0 then players = {"-- لا يوجد لاعبين --"} end
+    if PunchDropdown then PunchDropdown:SetOptions(players) end
+    if FlingDropdown then FlingDropdown:SetOptions(players) end
 end
 
--- تشغيل النظام
-print("✅ JOO Hub - Rayfield Edition | المفتاح: JOO")
-print("✅ تم تطوير هذا السكربت بواسطة: وزير 👑")
-createKeyWindow()
+UpdateDropdowns()
+game.Players.PlayerAdded:Connect(UpdateDropdowns)
+game.Players.PlayerRemoving:Connect(UpdateDropdowns)
