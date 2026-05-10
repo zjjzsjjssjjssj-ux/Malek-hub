@@ -1,427 +1,379 @@
--- تحميل Rayfield
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+-- Zenix Bang System - نسخة محسنة
+local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
+local player = game:GetService("Players").LocalPlayer
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local Debris = game:GetService("Debris")
 
--- ======================= واجهة المستخدم الرئيسية =======================
-local Window = Rayfield:CreateWindow({
-    Name = "Waxed Hub - بركاهيفن",
-    LoadingTitle = "جاري التحميل...",
-    LoadingSubtitle = "Waxed Hub",
-    ConfigurationSaving = { Enabled = true, FolderName = "WaxedHub", FileName = "Settings" },
+-- إعدادات Zenix الأصلية
+local Settings = {
+    Speed = 55,          -- سرعة الالتصاق
+    Distance = 1.2,      -- مسافة البانق
+    AntiFall = true,     -- منع السقوط
+    AntiStuck = true,    -- منع الالتصاق
+    Effects = true,      -- مؤثرات بصرية
+    ClimbMode = false,   -- وضع التسلق
+    DriveMode = false,   -- وضع القيادة
+}
+
+WindUI:AddTheme({
+    Name = "Zenix",
+    Accent = Color3.fromRGB(255, 70, 104),
+    Background = Color3.fromRGB(10, 10, 10),
+    Outline = Color3.fromRGB(255, 255, 255),
+    Text = Color3.fromRGB(255, 255, 255),
+    Placeholder = Color3.fromRGB(122, 122, 122),
+    Button = Color3.fromRGB(30, 30, 30),
+    Icon = Color3.fromRGB(255, 70, 104),
 })
 
--- ======================= متغيرات المضادات =======================
-local AntiDeathEnabled = false
-local AntiSitEnabled = false
-local AntiFlingEnabled = false
-local AntiPunchEnabled = false
-
--- ======================= قائمة المضاد =======================
-local AntiTab = Window:CreateTab("🛡️ المضاد")
-
-AntiTab:CreateSection("🔰 حماية اللاعب - Waxed Hub")
-
-AntiTab:CreateToggle({
-    Name = "💀 مضاد الموت 💀",
-    CurrentValue = false,
-    Flag = "AntiDeath",
-    Callback = function(Value) AntiDeathEnabled = Value end,
+local Window = WindUI:CreateWindow({
+    Title = "ZENIX BANG SYSTEM",
+    Icon = "zap",
+    Author = "Zenix",
+    Folder = "ZenixBang",
+    Size = UDim2.fromOffset(450, 550),
+    Theme = "Zenix",
+    Resizable = true,
+    SideBarWidth = 160,
+    HideSearchBar = true,
+    User = {Enabled = true, Anonymous = false},
 })
 
-AntiTab:CreateToggle({
-    Name = "🪑 مضاد الجلوس 🪑",
-    CurrentValue = false,
-    Flag = "AntiSit",
-    Callback = function(Value) AntiSitEnabled = Value end,
-})
+local lp = player
+local Remotes = ReplicatedStorage:FindFirstChild("Remotes")
 
-AntiTab:CreateToggle({
-    Name = "🌀 مضاد الفلنق 🌀",
-    CurrentValue = false,
-    Flag = "AntiFling",
-    Callback = function(Value) AntiFlingEnabled = Value end,
-})
+-- متغيرات البانق
+local bangActive = false
+local bangMode = "back" -- back, face, climb, drive
+local currentTarget = nil
+local originalCFrame = nil
+local isStuck = false
+local lastPosition = nil
 
-AntiTab:CreateToggle({
-    Name = "👊 مضاد البانج 👊",
-    CurrentValue = false,
-    Flag = "AntiPunch",
-    Callback = function(Value) AntiPunchEnabled = Value end,
-})
-
--- ======================= قائمة نسخ اسكنات =======================
-local SkinsTab = Window:CreateTab("🎨 نسخ اسكنات")
-
-SkinsTab:CreateSection("🎨 اسكنات المطور - Waxed Hub")
-
--- زر نسخ الاسكن الاسود المطرشم
-SkinsTab:CreateButton({
-    Name = "⚫ اسكن اسود مطرشم ⚫",
-    Callback = function()
-        local code = "BH-AE-c9023ea39f774eb786f785deb2adc5a7"
-        setclipboard(code)
-        Rayfield:Notify({
-            Title = "✅ تم النسخ",
-            Content = "تم نسخ الكود: " .. code,
-            Duration = 3
-        })
-    end,
-})
-
--- ======================= قائمة البانج =======================
-local PunchTab = Window:CreateTab("🔴 تفعيل البانج")
-
-local PunchEnabled = false
-local SelectedPunchPlayer = nil
-
-PunchTab:CreateToggle({
-    Name = "⚡ تشغيل القائمة ⚡",
-    CurrentValue = false,
-    Flag = "PunchToggle",
-    Callback = function(Value) PunchEnabled = Value end,
-})
-
-PunchTab:CreateSection("🎮 اختيار اللاعب")
-
-local PunchDropdown = PunchTab:CreateDropdown({
-    Name = "قائمة اللاعبين",
-    Options = {},
-    CurrentOption = "-- اختر لاعباً --",
-    Flag = "PunchSelect",
-    Callback = function(Option)
-        if Option == "-- اختر لاعباً --" then return end
-        for _, plr in pairs(game.Players:GetPlayers()) do
-            if plr.Name == Option then
-                SelectedPunchPlayer = plr
-                Rayfield:Notify({ Title = "✅", Content = "تم اختيار: " .. plr.Name, Duration = 1 })
-                break
-            end
-        end
-    end,
-})
-
-PunchTab:CreateSection("💥 أزرار البانج")
-
-PunchTab:CreateButton({
-    Name = "👊 بانج فيس 👊",
-    Callback = function()
-        if PunchEnabled and SelectedPunchPlayer then
-            game:GetService("ReplicatedStorage"):WaitForChild("RemotePunchFace"):FireServer(SelectedPunchPlayer)
-            Rayfield:Notify({ Title = "👊", Content = "بانج فيس على " .. SelectedPunchPlayer.Name, Duration = 1 })
-        else
-            Rayfield:Notify({ Title = "❌", Content = "فعّل القائمة واختر لاعباً!", Duration = 1.5 })
-        end
-    end,
-})
-
-PunchTab:CreateButton({
-    Name = "🤛 بانج ظهر 🤜",
-    Callback = function()
-        if PunchEnabled and SelectedPunchPlayer then
-            game:GetService("ReplicatedStorage"):WaitForChild("RemotePunchBack"):FireServer(SelectedPunchPlayer)
-            Rayfield:Notify({ Title = "🤛", Content = "بانج ظهر على " .. SelectedPunchPlayer.Name, Duration = 1 })
-        else
-            Rayfield:Notify({ Title = "❌", Content = "فعّل القائمة واختر لاعباً!", Duration = 1.5 })
-        end
-    end,
-})
-
--- ======================= قائمة الفلنق =======================
-local FlingTab = Window:CreateTab("🌀 فلنق")
-
-local FlingEnabled = false
-local SelectedFlingPlayer = nil
-
-FlingTab:CreateToggle({
-    Name = "⚡ تشغيل القائمة ⚡",
-    CurrentValue = false,
-    Flag = "FlingToggle",
-    Callback = function(Value) FlingEnabled = Value end,
-})
-
-FlingTab:CreateSection("🎮 اختيار اللاعب")
-
-local FlingDropdown = FlingTab:CreateDropdown({
-    Name = "قائمة اللاعبين",
-    Options = {},
-    CurrentOption = "-- اختر لاعباً --",
-    Flag = "FlingSelect",
-    Callback = function(Option)
-        if Option == "-- اختر لاعباً --" then return end
-        for _, plr in pairs(game.Players:GetPlayers()) do
-            if plr.Name == Option then
-                SelectedFlingPlayer = plr
-                Rayfield:Notify({ Title = "✅", Content = "تم اختيار: " .. plr.Name, Duration = 1 })
-                break
-            end
-        end
-    end,
-})
-
-FlingTab:CreateSection("🌀 زر الفلنق")
-
-FlingTab:CreateButton({
-    Name = "🌀 تفعيل الفلنق 🌀",
-    Callback = function()
-        if FlingEnabled and SelectedFlingPlayer then
-            game:GetService("ReplicatedStorage"):WaitForChild("RemoteFling"):FireServer(SelectedFlingPlayer)
-            Rayfield:Notify({ Title = "🌀", Content = "تم فلنق " .. SelectedFlingPlayer.Name, Duration = 1.5 })
-        else
-            Rayfield:Notify({ Title = "❌", Content = "فعّل القائمة واختر لاعباً!", Duration = 1.5 })
-        end
-    end,
-})
-
--- ======================= قائمة تلوين الاسم =======================
-local ColorTab = Window:CreateTab("🎨 تلوين الاسم")
-
-local ColoringEnabled = false
-local CurrentHue = 0
-local ColorLoop = nil
-
-ColorTab:CreateToggle({
-    Name = "🌈 تشغيل تلوين الاسم والبايو 🌈",
-    CurrentValue = false,
-    Flag = "ColorToggle",
-    Callback = function(Value)
-        ColoringEnabled = Value
-        if Value then
-            ColorLoop = task.spawn(function()
-                while ColoringEnabled do
-                    local color = Color3.fromHSV(CurrentHue, 1, 1)
-                    local player = game.Players.LocalPlayer
-                    if player and player.Character and player.Character:FindFirstChild("Head") then
-                        local head = player.Character.Head
-                        if head:FindFirstChild("NameDisplay") then
-                            local nd = head.NameDisplay
-                            if nd:FindFirstChild("Name") then nd.Name.TextColor3 = color end
-                            if nd:FindFirstChild("DisplayName") then nd.DisplayName.TextColor3 = color end
-                            if nd:FindFirstChild("Bio") then nd.Bio.TextColor3 = color end
-                        end
-                    end
-                    CurrentHue = CurrentHue + 0.02
-                    if CurrentHue > 1 then CurrentHue = 0 end
-                    task.wait(0.1)
-                end
-            end)
-            Rayfield:Notify({ Title = "🎨", Content = "تم تشغيل التلوين", Duration = 1.5 })
-        else
-            if ColorLoop then task.cancel(ColorLoop) end
-            -- إعادة اللون إلى الأبيض
-            local player = game.Players.LocalPlayer
-            if player and player.Character and player.Character:FindFirstChild("Head") then
-                local head = player.Character.Head
-                if head:FindFirstChild("NameDisplay") then
-                    local nd = head.NameDisplay
-                    local white = Color3.fromRGB(255, 255, 255)
-                    if nd:FindFirstChild("Name") then nd.Name.TextColor3 = white end
-                    if nd:FindFirstChild("DisplayName") then nd.DisplayName.TextColor3 = white end
-                    if nd:FindFirstChild("Bio") then nd.Bio.TextColor3 = white end
-                end
-            end
-            Rayfield:Notify({ Title = "🎨", Content = "تم إيقاف التلوين", Duration = 1.5 })
-        end
-    end,
-})
-
-ColorTab:CreateSection("🎨 اختر لوناً ثابتاً")
-
-ColorTab:CreateButton({
-    Name = "⚫ أسود",
-    Callback = function()
-        if ColoringEnabled then
-            if ColorLoop then task.cancel(ColorLoop) end
-            local color = Color3.fromRGB(0, 0, 0)
-            local player = game.Players.LocalPlayer
-            if player and player.Character and player.Character:FindFirstChild("Head") then
-                local head = player.Character.Head
-                if head:FindFirstChild("NameDisplay") then
-                    local nd = head.NameDisplay
-                    if nd:FindFirstChild("Name") then nd.Name.TextColor3 = color end
-                    if nd:FindFirstChild("DisplayName") then nd.DisplayName.TextColor3 = color end
-                    if nd:FindFirstChild("Bio") then nd.Bio.TextColor3 = color end
-                end
-            end
-            Rayfield:Notify({ Title = "🎨", Content = "تم تغيير اللون إلى الأسود", Duration = 1 })
-        end
-    end,
-})
-
-ColorTab:CreateButton({
-    Name = "🔴 أحمر",
-    Callback = function()
-        if ColoringEnabled then
-            if ColorLoop then task.cancel(ColorLoop) end
-            local color = Color3.fromRGB(255, 0, 0)
-            local player = game.Players.LocalPlayer
-            if player and player.Character and player.Character:FindFirstChild("Head") then
-                local head = player.Character.Head
-                if head:FindFirstChild("NameDisplay") then
-                    local nd = head.NameDisplay
-                    if nd:FindFirstChild("Name") then nd.Name.TextColor3 = color end
-                    if nd:FindFirstChild("DisplayName") then nd.DisplayName.TextColor3 = color end
-                    if nd:FindFirstChild("Bio") then nd.Bio.TextColor3 = color end
-                end
-            end
-            Rayfield:Notify({ Title = "🎨", Content = "تم تغيير اللون إلى الأحمر", Duration = 1 })
-        end
-    end,
-})
-
-ColorTab:CreateButton({
-    Name = "⬜ أبيض",
-    Callback = function()
-        if ColoringEnabled then
-            if ColorLoop then task.cancel(ColorLoop) end
-            local color = Color3.fromRGB(255, 255, 255)
-            local player = game.Players.LocalPlayer
-            if player and player.Character and player.Character:FindFirstChild("Head") then
-                local head = player.Character.Head
-                if head:FindFirstChild("NameDisplay") then
-                    local nd = head.NameDisplay
-                    if nd:FindFirstChild("Name") then nd.Name.TextColor3 = color end
-                    if nd:FindFirstChild("DisplayName") then nd.DisplayName.TextColor3 = color end
-                    if nd:FindFirstChild("Bio") then nd.Bio.TextColor3 = color end
-                end
-            end
-            Rayfield:Notify({ Title = "🎨", Content = "تم تغيير اللون إلى الأبيض", Duration = 1 })
-        end
-    end,
-})
-
-ColorTab:CreateButton({
-    Name = "🌈 رينبو (متحرك)",
-    Callback = function()
-        if ColoringEnabled then
-            if ColorLoop then task.cancel(ColorLoop) end
-            CurrentHue = 0
-            ColorLoop = task.spawn(function()
-                while ColoringEnabled do
-                    local color = Color3.fromHSV(CurrentHue, 1, 1)
-                    local player = game.Players.LocalPlayer
-                    if player and player.Character and player.Character:FindFirstChild("Head") then
-                        local head = player.Character.Head
-                        if head:FindFirstChild("NameDisplay") then
-                            local nd = head.NameDisplay
-                            if nd:FindFirstChild("Name") then nd.Name.TextColor3 = color end
-                            if nd:FindFirstChild("DisplayName") then nd.DisplayName.TextColor3 = color end
-                            if nd:FindFirstChild("Bio") then nd.Bio.TextColor3 = color end
-                        end
-                    end
-                    CurrentHue = CurrentHue + 0.02
-                    if CurrentHue > 1 then CurrentHue = 0 end
-                    task.wait(0.1)
-                end
-            end)
-            Rayfield:Notify({ Title = "🎨", Content = "تم تشغيل وضع الرينبو", Duration = 1 })
-        end
-    end,
-})
-
--- ======================= وظائف المضادات =======================
--- مضاد الموت
-task.spawn(function()
-    while true do
-        if AntiDeathEnabled then
-            local player = game.Players.LocalPlayer
-            local char = player.Character
-            if char and char:FindFirstChild("Humanoid") then
-                local humanoid = char.Humanoid
-                if humanoid.Health < 100 then
-                    humanoid.Health = 100
-                end
-                humanoid.BreakJointsOnDeath = false
-            end
-        end
-        task.wait(0.1)
-    end
-end)
-
--- مضاد الجلوس
-task.spawn(function()
-    while true do
-        if AntiSitEnabled then
-            local player = game.Players.LocalPlayer
-            local char = player.Character
-            if char and char:FindFirstChild("Humanoid") then
-                if char.Humanoid.Sit then
-                    char.Humanoid.Sit = false
-                end
-            end
-        end
-        task.wait(0.05)
-    end
-end)
-
--- مضاد الفلنق
-task.spawn(function()
-    while true do
-        if AntiFlingEnabled then
-            local player = game.Players.LocalPlayer
-            local char = player.Character
-            if char then
-                local hrp = char:FindFirstChild("HumanoidRootPart")
-                if hrp then
-                    for _, v in pairs(hrp:GetChildren()) do
-                        if v:IsA("BodyVelocity") or v:IsA("BodyAngularVelocity") then
-                            v:Destroy()
-                        end
-                    end
-                    if hrp.AssemblyLinearVelocity.Magnitude > 50 then
-                        hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-                    end
-                end
-            end
-        end
-        task.wait(0.1)
-    end
-end)
-
--- مضاد البانج
-task.spawn(function()
-    while true do
-        if AntiPunchEnabled then
-            local player = game.Players.LocalPlayer
-            local char = player.Character
-            if char then
-                local hrp = char:FindFirstChild("HumanoidRootPart")
-                if hrp then
-                    for _, v in pairs(hrp:GetChildren()) do
-                        if v:IsA("BodyVelocity") and v.Velocity.Magnitude < 100 then
-                            v:Destroy()
-                        end
-                    end
-                end
-            end
-        end
-        task.wait(0.1)
-    end
-end)
-
--- مراقبة تغير الشخصية
-game.Players.LocalPlayer.CharacterAdded:Connect(function(char)
-    task.wait(0.5)
-    if AntiDeathEnabled then
-        local humanoid = char:FindFirstChild("Humanoid")
-        if humanoid then
-            humanoid.BreakJointsOnDeath = false
-            humanoid.Health = 100
+-- دالة الحصول على الهدف
+local function GetTarget(input)
+    if not input or input == "" then return nil end
+    local search = input:lower()
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= lp and (p.Name:lower():find(search, 1, true) or p.DisplayName:lower():find(search, 1, true)) then
+            return p
         end
     end
-end)
-
--- تحديث قوائم اللاعبين
-local function UpdateDropdowns()
-    local players = {}
-    for _, plr in pairs(game.Players:GetPlayers()) do
-        if plr ~= game.Players.LocalPlayer then
-            table.insert(players, plr.Name)
-        end
-    end
-    if #players == 0 then players = {"-- لا يوجد لاعبين --"} end
-    if PunchDropdown then PunchDropdown:SetOptions(players) end
-    if FlingDropdown then FlingDropdown:SetOptions(players) end
+    return nil
 end
 
-UpdateDropdowns()
-game.Players.PlayerAdded:Connect(UpdateDropdowns)
-game.Players.PlayerRemoving:Connect(UpdateDropdowns)
+-- دالة تجهيز الأدوات (زي Zenix بالضبط)
+local function EquipTools()
+    local char = lp.Character
+    if not char then return end
+    
+    local tools = {}
+    for _, tool in ipairs(lp.Backpack:GetChildren()) do
+        if tool:IsA("Tool") and #tools < 6 then
+            table.insert(tools, tool)
+        end
+    end
+    
+    for i, tool in ipairs(tools) do
+        task.wait(0.05)
+        tool.Parent = char
+    end
+end
+
+-- دالة المؤثرات البصرية (تأثير Zenix)
+local function CreateBangEffect(position)
+    if not Settings.Effects then return end
+    
+    -- تأثير ناري
+    local fire = Instance.new("Part")
+    fire.Size = Vector3.new(2, 2, 2)
+    fire.Position = position
+    fire.Anchored = true
+    fire.CanCollide = false
+    fire.Transparency = 0.5
+    fire.BrickColor = BrickColor.new("Bright red")
+    fire.Material = Enum.Material.Neon
+    fire.Parent = game.Workspace
+    
+    -- تأثير دخان
+    local smoke = Instance.new("Smoke")
+    smoke.Color = Color3.new(1, 0.3, 0.3)
+    smoke.Opacity = 0.8
+    smoke.RiseVelocity = 5
+    smoke.Parent = fire
+    
+    Debris:AddItem(fire, 1.5)
+    
+    -- تأثير اهتزاز للكاميرا
+    if game:GetService("Workspace").CurrentCamera then
+        local cam = game:GetService("Workspace").CurrentCamera
+        local originalCF = cam.CFrame
+        for i = 1, 5 do
+            cam.CFrame = cam.CFrame * CFrame.new(math.random(-1,1)/10, math.random(-1,1)/10, math.random(-1,1)/10)
+            task.wait(0.02)
+        end
+        cam.CFrame = originalCF
+    end
+end
+
+-- الحلقة الرئيسية لحركة البانق (مطابقة لـ Zenix)
+RunService.Stepped:Connect(function()
+    local char = lp.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    
+    if not char or not hrp or not hum then return end
+    
+    -- وضعية القيادة
+    local vehicle = char:FindFirstChildOfClass("VehicleSeat") and char:FindFirstChildOfClass("VehicleSeat").Parent
+    if Settings.DriveMode and vehicle and vehicle:IsA("Vehicle") then
+        hrp.CFrame = hrp.CFrame
+        return
+    end
+    
+    if bangActive and currentTarget and currentTarget.Character then
+        local targetChar = currentTarget.Character
+        local targetHRP = targetChar:FindFirstChild("HumanoidRootPart")
+        local targetHead = targetChar:FindFirstChild("Head")
+        local targetTorso = targetChar:FindFirstChild("UpperTorso") or targetChar:FindFirstChild("Torso")
+        
+        if targetHRP and (targetHead or targetTorso) then
+            -- منع السقوط (Anti-Fall)
+            if Settings.AntiFall and hrp.Position.Y < 0 then
+                hrp.CFrame = CFrame.new(hrp.Position.X, 50, hrp.Position.Z)
+                hrp.Velocity = Vector3.zero
+            end
+            
+            -- منع الالتصاق (Anti-Stuck)
+            if Settings.AntiStuck and lastPosition and (hrp.Position - lastPosition).Magnitude < 0.1 then
+                if not isStuck then
+                    isStuck = true
+                    hrp.CFrame = hrp.CFrame + Vector3.new(math.random(-2,2), math.random(1,3), math.random(-2,2))
+                end
+            else
+                isStuck = false
+            end
+            lastPosition = hrp.Position
+            
+            -- منع الجلوس
+            hum.Sit = false
+            hum:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
+            
+            -- إلغاء التصادم
+            for _, part in ipairs(char:GetDescendants()) do
+                if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+                    part.CanCollide = false
+                end
+            end
+            
+            -- سرعة البانق (تأثير الاهتزاز)
+            local wave = math.sin(tick() * Settings.Speed)
+            local offset = wave * 0.8
+            
+            -- الوضعيات المختلفة
+            if bangMode == "back" then
+                -- بانق خلفي (الوضعية الأساسية)
+                hrp.CFrame = targetHRP.CFrame * CFrame.new(0, 0.5, Settings.Distance + offset)
+                hrp.CFrame = hrp.CFrame * CFrame.Angles(0, math.rad(180), 0)
+                
+            elseif bangMode == "face" then
+                -- فيس سيت (على الوجه)
+                if targetHead then
+                    hrp.CFrame = targetHead.CFrame * CFrame.new(0, -0.6, offset) * CFrame.Angles(0, math.rad(180), 0)
+                end
+                
+            elseif bangMode == "climb" then
+                -- وضع التسلق (يتحرك حول الهدف)
+                local angle = tick() * 3
+                local radius = 2
+                local x = math.cos(angle) * radius
+                local z = math.sin(angle) * radius
+                hrp.CFrame = targetHRP.CFrame * CFrame.new(x, 0.5, z)
+                
+            elseif bangMode == "drive" then
+                -- وضع القيادة (يقف خلف الهدف)
+                hrp.CFrame = targetHRP.CFrame * CFrame.new(0, 0, -2.5) * CFrame.Angles(0, math.rad(180), 0)
+            end
+            
+            -- إبقاء السرعة صفر
+            hrp.Velocity = Vector3.zero
+            hrp.RotVelocity = Vector3.zero
+            
+        else
+            -- إذا مات الهدف أو اختفى
+            bangActive = false
+            currentTarget = nil
+            if originalCFrame and not bangActive then
+                hrp.CFrame = originalCFrame
+                originalCFrame = nil
+            end
+        end
+    elseif originalCFrame and not bangActive then
+        hrp.CFrame = originalCFrame
+        originalCFrame = nil
+    end
+end)
+
+-- إنشاء الواجهة (مطابقة لـ Zenix)
+local MainTab = Window:Tab({Title = "البنق", Icon = "zap"})
+
+MainTab:Paragraph({
+    Title = "ZENIX BANG SYSTEM",
+    Text = "افضل نظام بانق في اللعبة"
+})
+
+-- اختيار الهدف
+MainTab:Input({
+    Title = "اسم الهدف",
+    Default = "",
+    Placeholder = "اكتب اسم اللاعب...",
+    Callback = function(v)
+        currentTarget = GetTarget(v)
+        if currentTarget then
+            print("✅ تم اختيار: " .. currentTarget.Name)
+        end
+    end
+})
+
+MainTab:Divider()
+
+-- وضعيات البانق
+MainTab:Toggle({
+    Title = "تفعيل البانق 🍑",
+    Default = false,
+    Callback = function(v)
+        bangActive = v
+        if v then
+            originalCFrame = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") and lp.Character.HumanoidRootPart.CFrame
+            bangMode = "back"
+            if currentTarget then
+                CreateBangEffect(lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") and lp.Character.HumanoidRootPart.Position or Vector3.zero)
+            end
+        end
+    end
+})
+
+MainTab:Toggle({
+    Title = "وضع فيس سيت 👅",
+    Default = false,
+    Callback = function(v)
+        if v then
+            bangActive = true
+            bangMode = "face"
+            originalCFrame = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") and lp.Character.HumanoidRootPart.CFrame
+        elseif bangMode == "face" then
+            bangActive = false
+        end
+    end
+})
+
+MainTab:Toggle({
+    Title = "وضع التسلق 🧗",
+    Default = false,
+    Callback = function(v)
+        if v then
+            bangActive = true
+            bangMode = "climb"
+            originalCFrame = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") and lp.Character.HumanoidRootPart.CFrame
+        elseif bangMode == "climb" then
+            bangActive = false
+        end
+    end
+})
+
+MainTab:Toggle({
+    Title = "وضع القيادة 🚗",
+    Default = false,
+    Callback = function(v)
+        if v then
+            bangActive = true
+            bangMode = "drive"
+            originalCFrame = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") and lp.Character.HumanoidRootPart.CFrame
+        elseif bangMode == "drive" then
+            bangActive = false
+        end
+    end
+})
+
+MainTab:Divider()
+
+-- إعدادات الأدوات
+MainTab:Paragraph({Title = "نظام الأدوات", Text = ""})
+MainTab:Toggle({
+    Title = "سحب 6 أدوات تلقائياً",
+    Default = false,
+    Callback = function(v)
+        if v and bangActive then
+            EquipTools()
+        end
+    end
+})
+
+MainTab:Button({
+    Title = "سحب الأدوات الان",
+    Callback = function()
+        EquipTools()
+    end
+})
+
+-- الإعدادات المتقدمة
+local SettingsTab = Window:Tab({Title = "الإعدادات", Icon = "settings"})
+
+SettingsTab:Paragraph({Title = "إعدادات البانق", Text = ""})
+
+SettingsTab:Slider({
+    Title = "سرعة البانق",
+    Default = 55,
+    Min = 20,
+    Max = 100,
+    Callback = function(v)
+        Settings.Speed = v
+    end
+})
+
+SettingsTab:Slider({
+    Title = "مسافة البانق",
+    Default = 1.2,
+    Min = 0.5,
+    Max = 3,
+    Precision = 1,
+    Callback = function(v)
+        Settings.Distance = v
+    end
+})
+
+SettingsTab:Toggle({
+    Title = "حماية من السقوط",
+    Default = true,
+    Callback = function(v)
+        Settings.AntiFall = v
+    end
+})
+
+SettingsTab:Toggle({
+    Title = "حماية من الالتصاق",
+    Default = true,
+    Callback = function(v)
+        Settings.AntiStuck = v
+    end
+})
+
+SettingsTab:Toggle({
+    Title = "مؤثرات بصرية",
+    Default = true,
+    Callback = function(v)
+        Settings.Effects = v
+    end
+})
+
+-- معلومات
+local InfoTab = Window:Tab({Title = "معلومات", Icon = "info"})
+InfoTab:Paragraph({
+    Title = "عن السكربت",
+    Text = "نسخة Zenix Bang System\n\n• مطابق لسكربت Zenix الأصلي\n• نظام بانق سريع وثابت\n• دعم 4 وضعيات مختلفة\n• حماية متكاملة\n• مؤثرات بصرية"
+})
+
+print("✅ Zenix Bang System Loaded - مطابق للأصل 100%")
